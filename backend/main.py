@@ -1,63 +1,53 @@
-# backend/main.py
-# ---
-# This is the entry point for the FastAPI backend.
-# Key changes for deployment:
-# 1. Added CORS Middleware to allow requests from our deployed frontend.
-# 2. Added StaticFiles to serve the images stored in the 'uploads' directory.
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from dotenv import load_dotenv
 
-# Import your API routers
-from api import skin_analysis #, recommendations, auth, products
+# Load environment variables from .env file
+load_dotenv()
 
-# --- App Initialization ---
-app = FastAPI(
-    title="Apsara API",
-    description="API for the Apsara AI Skincare Recommendation Platform",
-    version="1.0.0"
-)
+# --- FIX IS ON THE LINE BELOW ---
+# We change "from api" to "from .api" to make it an explicit relative import.
+# This tells Python to look for the 'api' folder in the same directory as this file.
+from .api import skin_analysis #, recommendations, auth, products
 
-# --- CORS (Cross-Origin Resource Sharing) ---
-# This is crucial for security. It tells the backend to only accept
-# requests from your specific frontend URL in production.
 
-# Get the frontend URL from environment variables.
-# For development, we can default to localhost.
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+app = FastAPI(title="Apsara Beauty API")
 
+# Set up CORS (Cross-Origin Resource Sharing)
+# This allows your frontend (on Vercel) to make requests to this backend (on Render)
 origins = [
-    FRONTEND_URL,
-    # You can add more origins here if needed, e.g., a staging environment
+    os.getenv("FRONTEND_URL", "http://localhost:3000"),
+    "http://localhost:3000", # For local development
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Create the 'uploads' directory if it doesn't exist
+# This is where user-uploaded images will be stored
+uploads_dir = "uploads"
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir)
 
-# --- Static File Serving ---
-# This line makes the 'uploads' directory publicly accessible.
-# So, a file at 'uploads/image.jpg' can be accessed from
-# http://your-backend-url.com/uploads/image.jpg
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
-# --- API Routers ---
-# Include the routers from your api directory
-app.include_router(skin_analysis.router, prefix="/api/skin", tags=["Skin Analysis"])
-# app.include_router(recommendations.router, prefix="/api/recs", tags=["Recommendations"])
-# app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-# app.include_router(products.router, prefix="/api/products", tags=["Products"])
+# Serve static files (the uploaded images) from the /uploads endpoint
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
-# --- Root Endpoint ---
-@app.get("/")
+# Include the routers from the api directory
+app.include_router(skin_analysis.router)
+# app.include_router(recommendations.router)
+# app.include_router(auth.router)
+# app.include_router(products.router)
+
+
+@app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Welcome to the Apsara API! 🌸"}
+    """A simple root endpoint to confirm the API is running."""
+    return {"message": "Welcome to the Apsara Beauty API"}
