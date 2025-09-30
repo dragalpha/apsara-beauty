@@ -196,3 +196,34 @@ Ignore Next.js build artifacts and node modules in the frontend
 Ignore local environment files
 .env.local
 backend/.env
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+.env
+.env.local
+
+# Build outputs
+.next/
+build/
+dist/
+*.pyc
+
+# Development
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# Data and uploads
+data/models/*
+uploads/*
+logs/*
+!data/models/.gitkeep
+!uploads/.gitkeep
+!logs/.gitkeep
+
+# Database
+*.sqlite
+*.db
