@@ -24,8 +24,11 @@ origins = [o.strip().rstrip('/') for o in origins_env.split(",") if o.strip()] +
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"^https:\/\/([a-z0-9-]+)\.vercel\.app$",
+    allow_origins=[
+        "http://localhost:3000",                  # Local dev
+        "https://apsara-beauty-ruby.vercel.app", # Your deployed frontend
+    ],
+    allow_origin_regex=r"^https:\/\/([a-z0-9-]+)\.vercel\.app$",  # preview deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
