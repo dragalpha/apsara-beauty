@@ -537,8 +537,8 @@ async def reset_session(session_id: str):
 async def analyze_with_image(session_id: str, file: UploadFile = File(...)):
     if session_id not in chatbot.sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
-    from backend.services import image_service
+    from ml_models.optimized_analyzer import get_optimized_analyzer
+    from services import image_service
     image_path = await image_service.save_upload_file(file)
     analyzer = get_optimized_analyzer()
     results = analyzer.analyze(image_path)
@@ -569,26 +569,6 @@ async def export_routine(session_id: str):
         "notes": "Remember to patch test and introduce products gradually!",
     }
 
-from fastapi import APIRouter, Query
-from pydantic import BaseModel
-
-router = APIRouter()
-
-
-class ChatbotRequest(BaseModel):
-    question: str
-
-
-@router.post("/chat")
-def chat(req: ChatbotRequest):
-    question = (req.question or "").lower()
-    # Very simple rules-based stub
-    if "acne" in question:
-        answer = "For acne-prone skin, use a gentle cleanser and salicylic acid."
-    elif "hydrate" in question or "dry" in question:
-        answer = "Hydration: look for hyaluronic acid serums and ceramide moisturizers."
-    else:
-        answer = "Try a basic routine: cleanse, moisturize, and SPF in the morning."
-    return {"answer": answer}
+# End of chatbot implementation
 
 

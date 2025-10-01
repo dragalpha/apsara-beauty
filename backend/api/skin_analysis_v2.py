@@ -9,12 +9,12 @@ import hashlib
 import numpy as np
 from PIL import Image
 
-from backend.services import image_service
-from backend.services.product_service import recommend_products
-from backend.ml_models import analyze_image as heuristic_analyze
+from services import image_service
+from services.product_service import recommend_products
+from ml_models import analyze_image as heuristic_analyze
 
 try:
-    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
+    from ml_models.optimized_analyzer import get_optimized_analyzer
     _has_optimized = True
 except ImportError:
     _has_optimized = False
