@@ -3,15 +3,19 @@
 # This file defines the API endpoint for skin analysis.
 # It now uses our local `image_service` to handle the file upload.
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
 # Use absolute imports from project root per requirements
 from backend.services import image_service
-from backend.database.connection import get_db
 from backend.ml_models import analyze_image
+try:
+    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
+    _has_optimized = True
+except Exception:
+    _has_optimized = False
 from backend.services.product_service import recommend_products
 from backend.services.youtube_service import search_reviews
 
@@ -56,7 +60,6 @@ class SkinAnalysisResult(BaseModel):
 @router.post("/analyze", response_model=SkinAnalysisResult)
 async def analyze_skin(
     file: UploadFile = File(...),
-    db = Depends(get_db)
 ):
     """
     Endpoint to upload a skin photo for analysis.
@@ -69,9 +72,22 @@ async def analyze_skin(
         image_path = await image_service.save_upload_file(file)
 
         # --- ML Model Integration ---
-        # Here, you would pass the `image_path` to your ML model
-        # For now, we'll use a mock function to simulate the analysis
-        analysis_results = mock_skin_analyzer(image_path)
+        if _has_optimized:
+            try:
+                analyzer = get_optimized_analyzer()
+                opt = analyzer.analyze(image_path)
+                analysis_results = {
+                    "analysis_id": "opt_id",
+                    "results": {
+                        "skin_type": opt["skin_type"],
+                        "concerns": opt["concerns"],
+                        "recommendations": opt["recommendations"],
+                    },
+                }
+            except Exception:
+                analysis_results = mock_skin_analyzer(image_path)
+        else:
+            analysis_results = mock_skin_analyzer(image_path)
         user_concerns = analysis_results["results"]["concerns"]
 
         # Recommend products
@@ -97,6 +113,9 @@ async def analyze_skin(
             products=products,
             videos=videos,
         )
+    except HTTPException as he:
+        # Propagate known validation errors (e.g., file too large, invalid type)
+        raise he
     except Exception as e:
         logging.error(f"Analysis failed: {str(e)}")
         raise HTTPException(

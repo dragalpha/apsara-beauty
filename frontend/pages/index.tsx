@@ -5,6 +5,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [chatInput, setChatInput] = useState('')
+  const [chatAnswer, setChatAnswer] = useState<string | null>(null)
   const backendUrl = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8000'
     return url.replace(/\/$/, '')
@@ -12,6 +14,27 @@ export default function Home() {
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null)
+  }
+
+  const onAsk = async () => {
+    if (!chatInput.trim()) return
+    setChatAnswer(null)
+    setError(null)
+    try {
+      const res = await fetch(`${backendUrl}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: chatInput.trim() })
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`HTTP ${res.status}: ${text}`)
+      }
+      const data = await res.json()
+      setChatAnswer(data?.answer || 'No answer')
+    } catch (e: any) {
+      setError(e?.message || 'Chat failed')
+    }
   }
 
   const onUpload = async () => {
@@ -95,6 +118,22 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div className="bg-white p-6 rounded shadow">
+            <h2 className="text-xl font-semibold mb-2">Skincare Chatbot</h2>
+            <div className="flex gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask a skincare question..."
+                className="flex-1 border rounded px-3 py-2"
+              />
+              <button onClick={onAsk} className="px-4 py-2 bg-green-600 text-white rounded">Ask</button>
+            </div>
+            {chatAnswer && (
+              <div className="mt-3 text-gray-800">{chatAnswer}</div>
+            )}
           </div>
         </section>
       )}

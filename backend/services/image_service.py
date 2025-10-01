@@ -12,7 +12,7 @@ from pathlib import Path
 # Use environment variable for upload directory, with a local fallback
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 async def validate_image(file: UploadFile) -> None:
     """
