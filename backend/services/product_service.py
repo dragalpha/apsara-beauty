@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 
 
 PRODUCTS_CSV_PATH = Path(os.getenv("PRODUCTS_CSV_PATH", "backend/data/products.csv"))
+AMAZON_ASSOC_TAG = os.getenv("AMAZON_ASSOC_TAG", "")
 
 
 @dataclass
@@ -17,6 +18,7 @@ class Product:
     concerns: List[str]
     url: Optional[str]
     image_url: Optional[str]
+    asin: Optional[str] = None
 
 
 def _normalize(text: str) -> str:
@@ -32,6 +34,12 @@ def load_products() -> List[Product]:
         for row in reader:
             concerns_raw = row.get("concerns", "")
             concerns = [c.strip() for c in concerns_raw.split("|") if c.strip()]
+            asin = row.get("asin")
+            url = row.get("url")
+            # Build Amazon affiliate URL if ASIN and tag are provided and url missing
+            if not url and asin and AMAZON_ASSOC_TAG:
+                url = f"https://www.amazon.com/dp/{asin}?tag={AMAZON_ASSOC_TAG}"
+
             products.append(
                 Product(
                     id=row.get("id", ""),
@@ -39,8 +47,9 @@ def load_products() -> List[Product]:
                     brand=row.get("brand", ""),
                     category=row.get("category", ""),
                     concerns=concerns,
-                    url=row.get("url"),
+                    url=url,
                     image_url=row.get("image_url"),
+                    asin=asin,
                 )
             )
     return products
@@ -71,6 +80,7 @@ def recommend_products(user_concerns: List[str], limit: int = 5) -> List[Dict]:
             "concerns": p.concerns,
             "url": p.url,
             "image_url": p.image_url,
+            "asin": p.asin,
         }
         for p in top
     ]

@@ -5,7 +5,7 @@ const nextConfig = {
     BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
   },
   images: {
-    domains: ['localhost', 'your-backend-domain.com'],
+    domains: ['localhost', 'your-backend-domain.com', 'm.media-amazon.com', 'images-na.ssl-images-amazon.com', 'amazon.com', 'www.amazon.com'],
   },
 }
 
