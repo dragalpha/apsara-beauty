@@ -463,7 +463,7 @@ class SkincareChatbot:
             recommendations = self.generate_recommendations(session.profile)
             session.recommendations = recommendations
             response = self._format_recommendations(recommendations, session.profile)
-            from backend.services.product_service import recommend_products
+            from services.product_service import recommend_products
             products = recommend_products(session.profile.concerns)[:5]
             suggestions = ["Show morning routine", "Show evening routine", "Explain ingredients", "Start over"]
         else:
@@ -537,8 +537,8 @@ async def reset_session(session_id: str):
 async def analyze_with_image(session_id: str, file: UploadFile = File(...)):
     if session_id not in chatbot.sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    from ml_models.optimized_analyzer import get_optimized_analyzer
-    from services import image_service
+    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
+    from backend.services import image_service
     image_path = await image_service.save_upload_file(file)
     analyzer = get_optimized_analyzer()
     results = analyzer.analyze(image_path)
