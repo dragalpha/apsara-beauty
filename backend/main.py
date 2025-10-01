@@ -7,12 +7,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# --- FIX IS ON THE LINE BELOW ---
-# We change "from api" to "from .api" to make it an explicit relative import.
-# This tells Python to look for the 'api' folder in the same directory as this file.
-# Absolute imports from project root
-from backend.api import skin_analysis #, recommendations, auth, products
-from backend.api import chatbot, notifications
+# Import API routers
+from api import skin_analysis_v2, chatbot, notifications
 
 
 app = FastAPI(title="Apsara Beauty API")
@@ -45,7 +41,7 @@ app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 # Include the routers from the api directory
-app.include_router(skin_analysis.router)
+app.include_router(skin_analysis_v2.router)
 app.include_router(chatbot.router, tags=["Chatbot"])
 app.include_router(notifications.router, tags=["Notifications"])
 # app.include_router(recommendations.router)

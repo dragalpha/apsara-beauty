@@ -17,7 +17,7 @@ try:
 except Exception:
     _has_optimized = False
 from backend.services.product_service import recommend_products
-from backend.services.youtube_service import search_reviews
+
 
 # We'll imagine the ML model service exists like this:
 # from ..ml_models import skin_analyzer 
@@ -40,13 +40,6 @@ class ProductItem(BaseModel):
     image_url: Optional[str] = None
 
 
-class VideoItem(BaseModel):
-    title: str
-    channel: str
-    url: str
-    thumbnail: Optional[str] = None
-
-
 class SkinAnalysisResult(BaseModel):
     analysis_id: str
     skin_type: str
@@ -54,7 +47,6 @@ class SkinAnalysisResult(BaseModel):
     recommendations: str
     image_path: str
     products: List[ProductItem] = []
-    videos: List[VideoItem] = []
 
 
 @router.post("/analyze", response_model=SkinAnalysisResult)
@@ -92,13 +84,6 @@ async def analyze_skin(
 
         # Recommend products
         products = recommend_products(user_concerns)
-
-        # YouTube videos for the top product (or first concern)
-        videos = []
-        if products:
-            videos = search_reviews(products[0]["name"]) or []
-        elif user_concerns:
-            videos = search_reviews(user_concerns[0]) or []
         
         # You might want to include the image URL in the response
         # The URL will depend on your backend's live URL
@@ -111,7 +96,6 @@ async def analyze_skin(
             recommendations=analysis_results["results"]["recommendations"],
             image_path=image_path,
             products=products,
-            videos=videos,
         )
     except HTTPException as he:
         # Propagate known validation errors (e.g., file too large, invalid type)
