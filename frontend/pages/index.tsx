@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8000'
+  const [error, setError] = useState<string | null>(null)
+  const backendUrl = useMemo(() => (
+    process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8000'
+  ), [])
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null)
@@ -14,12 +17,26 @@ export default function Home() {
     if (!file) return
     setLoading(true)
     setResult(null)
+    setError(null)
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch(`${backendUrl}/analyze`, { method: 'POST', body: form })
-    const data = await res.json()
-    setResult(data)
-    setLoading(false)
+    try {
+      const res = await fetch(`${backendUrl}/analyze`, { method: 'POST', body: form })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`HTTP ${res.status}: ${text}`)
+      }
+      const ct = res.headers.get('content-type') || ''
+      const data = ct.includes('application/json') ? await res.json() : await res.text()
+      if (typeof data !== 'object') {
+        throw new Error('Unexpected response from server')
+      }
+      setResult(data)
+    } catch (e: any) {
+      setError(e?.message || 'Upload failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -30,6 +47,13 @@ export default function Home() {
         <button onClick={onUpload} disabled={!file || loading} className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50">
           {loading ? 'Analyzing…' : 'Analyze Skin'}
         </button>
+      </div>
+
+      <div className="mt-4 text-sm text-gray-600">
+        <div>Backend: <code className="bg-gray-100 px-1 py-0.5 rounded">{backendUrl}</code></div>
+        {error && (
+          <div className="mt-2 text-red-600">Error: {error}</div>
+        )}
       </div>
 
       {result && (
