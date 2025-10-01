@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import API routers
-from api import skin_analysis_v2, chatbot, notifications
+from backend.api import skin_analysis_v2, chatbot, notifications
 
 
 app = FastAPI(title="Apsara Beauty API")
