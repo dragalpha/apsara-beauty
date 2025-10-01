@@ -59,9 +59,7 @@ echo "🗄️ Setting up database..."
 if command -v psql &> /dev/null; then
     echo "🗄️ Initializing database..."
     psql -c "CREATE DATABASE apsara_db;" 2>/dev/null || echo "Database exists"
-    cd backend
-    python -c "from database.connection import init_db; init_db()" || echo "Database initialized"
-    cd ..
+    (cd backend && python -c "from database.connection import init_db; init_db()") || echo "Database initialized"
 fi
 
 # Frontend validation

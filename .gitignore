@@ -1,3 +1,30 @@
+# Node
+node_modules/
+frontend/.next/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env files
+.env
+backend/.env
+frontend/.env
+
+# Data and large artifacts
+data/
+backend/data/
+!backend/data/.gitkeep
+
+# Uploads (keep directory, ignore files)
+uploads/*
+!uploads/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
 Byte-compiled / optimized / DLL files
 pycache/
 *.py[cod]

@@ -9,8 +9,8 @@ import aiofiles
 from fastapi import UploadFile, HTTPException
 from pathlib import Path
 
-# Create the uploads directory if it doesn't exist
-UPLOAD_DIR = Path("uploads")
+# Use environment variable for upload directory, with a local fallback
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
@@ -46,6 +46,6 @@ async def save_upload_file(file: UploadFile) -> str:
         content = await file.read()
         await out_file.write(content)
     
-    # Return the path that will be used to access the file
+    # Return the relative path that can be used in a URL
     # e.g., "uploads/some-unique-name.jpg"
-    return str(file_path)
+    return str(file_path).replace('\\', '/')

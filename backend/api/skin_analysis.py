@@ -8,8 +8,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
-from ..services import image_service
-from ..database.connection import get_db
+# Use absolute imports from project root per requirements
+from backend.services import image_service
+from backend.database.connection import get_db
+from backend.ml_models import analyze_image
+from backend.services.product_service import recommend_products
+from backend.services.youtube_service import search_reviews
 
 # We'll imagine the ML model service exists like this:
 # from ..ml_models import skin_analyzer 
@@ -18,24 +22,35 @@ router = APIRouter()
 
 # A mock function to simulate the ML analysis
 def mock_skin_analyzer(image_path: str):
-    # In a real app, this would load the image and run the ML model
-    print(f"Analyzing image at: {image_path}")
-    return {
-        "analysis_id": "mock_id_12345",
-        "results": {
-            "skin_type": "Combination",
-            "concerns": ["Acne", "Dehydration"],
-            "recommendations": "Use a gentle cleanser and a non-comedogenic moisturizer."
-        }
-    }
+    # Temporary shim to call the placeholder model
+    return analyze_image(image_path)
 
 # Response models
+class ProductItem(BaseModel):
+    id: str
+    name: str
+    brand: str
+    category: str
+    concerns: List[str]
+    url: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class VideoItem(BaseModel):
+    title: str
+    channel: str
+    url: str
+    thumbnail: Optional[str] = None
+
+
 class SkinAnalysisResult(BaseModel):
     analysis_id: str
     skin_type: str
     concerns: List[str]
     recommendations: str
     image_path: str
+    products: List[ProductItem] = []
+    videos: List[VideoItem] = []
 
 
 @router.post("/analyze", response_model=SkinAnalysisResult)
@@ -57,6 +72,17 @@ async def analyze_skin(
         # Here, you would pass the `image_path` to your ML model
         # For now, we'll use a mock function to simulate the analysis
         analysis_results = mock_skin_analyzer(image_path)
+        user_concerns = analysis_results["results"]["concerns"]
+
+        # Recommend products
+        products = recommend_products(user_concerns)
+
+        # YouTube videos for the top product (or first concern)
+        videos = []
+        if products:
+            videos = search_reviews(products[0]["name"]) or []
+        elif user_concerns:
+            videos = search_reviews(user_concerns[0]) or []
         
         # You might want to include the image URL in the response
         # The URL will depend on your backend's live URL
@@ -67,7 +93,9 @@ async def analyze_skin(
             skin_type=analysis_results["results"]["skin_type"],
             concerns=analysis_results["results"]["concerns"],
             recommendations=analysis_results["results"]["recommendations"],
-            image_path=image_path
+            image_path=image_path,
+            products=products,
+            videos=videos,
         )
     except Exception as e:
         logging.error(f"Analysis failed: {str(e)}")
