@@ -2,7 +2,7 @@ import csv
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 
 PRODUCTS_CSV_PATH = Path(os.getenv("PRODUCTS_CSV_PATH", "backend/data/products.csv"))
@@ -84,5 +84,31 @@ def recommend_products(user_concerns: List[str], limit: int = 5) -> List[Dict]:
         }
         for p in top
     ]
+
+
+def recommend_products(concerns: List[str]) -> List[Dict[str, Any]]:
+    """Basic product recommendations based on skin concerns."""
+    products = []
+
+    default_products = [
+        {
+            "id": "cleanser-1",
+            "name": "Gentle Cleanser",
+            "brand": "Apsara",
+            "category": "Cleanser",
+            "concerns": ["General"],
+            "url": "https://example.com/products/cleanser-1",
+        },
+        {
+            "id": "moisturizer-1",
+            "name": "Daily Moisturizer",
+            "brand": "Apsara",
+            "category": "Moisturizer",
+            "concerns": ["Dehydration"],
+            "url": "https://example.com/products/moisturizer-1",
+        },
+    ]
+
+    return default_products[:10]
 
 

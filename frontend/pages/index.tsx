@@ -23,7 +23,7 @@ export default function Home() {
     setChatAnswer(null)
     setError(null)
     try {
-      const res = await fetch(`${backendUrl}/chat`, {
+      const res = await fetch(`${backendUrl}/api/chat/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: chatInput.trim(), session_id: sessionId || undefined })
@@ -47,7 +47,7 @@ export default function Home() {
       // Ensure session
       let sid = sessionId
       if (!sid) {
-        const init = await fetch(`${backendUrl}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Hi' }) })
+        const init = await fetch(`${backendUrl}/api/chat/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Hi' }) })
         const d = await init.json()
         sid = d?.session_id
         if (sid) setSessionId(sid)
@@ -56,7 +56,7 @@ export default function Home() {
       const form = new FormData()
       form.append('session_id', sid)
       form.append('file', file)
-      const res = await fetch(`${backendUrl}/chat/analyze-image`, { method: 'POST', body: form })
+      const res = await fetch(`${backendUrl}/api/chat/chat/analyze-image`, { method: 'POST', body: form })
       if (!res.ok) {
         const text = await res.text()
         throw new Error(`HTTP ${res.status}: ${text}`)
@@ -76,7 +76,7 @@ export default function Home() {
     const form = new FormData()
     form.append('file', file)
     try {
-      const res = await fetch(`${backendUrl}/analyze`, { method: 'POST', body: form })
+      const res = await fetch(`${backendUrl}/api/analysis/analyze`, { method: 'POST', body: form })
       if (!res.ok) {
         const text = await res.text()
         throw new Error(`HTTP ${res.status}: ${text}`)

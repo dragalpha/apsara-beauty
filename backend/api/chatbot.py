@@ -393,7 +393,8 @@ class SkincareChatbot:
         response += "• Don't forget your neck!\n"
         return response
 
-    def _update_state(self, session: ChatSession):
+    def _update_state(self, session: ChatSession, message: str):
+        """Update conversation state based on current state and user input"""
         state_transitions = {
             ConversationState.GREETING: ConversationState.SKIN_TYPE,
             ConversationState.SKIN_TYPE: ConversationState.CONCERNS,
@@ -405,19 +406,38 @@ class SkincareChatbot:
             ConversationState.ALLERGIES: ConversationState.ANALYSIS,
             ConversationState.ANALYSIS: ConversationState.FOLLOWUP,
         }
-        if session.state == ConversationState.SKIN_TYPE and session.profile.skin_type:
-            session.state = state_transitions[session.state]
-        elif session.state == ConversationState.CONCERNS and session.profile.concerns:
-            session.state = state_transitions[session.state]
-        elif session.state == ConversationState.AGE_RANGE and session.profile.age_range:
-            session.state = state_transitions[session.state]
-        elif session.state in [
-            ConversationState.ROUTINE,
-            ConversationState.LIFESTYLE,
-            ConversationState.BUDGET,
-            ConversationState.ALLERGIES,
-        ]:
-            session.state = state_transitions[session.state]
+        
+        # More intelligent state transitions
+        if session.state == ConversationState.GREETING:
+            # Move to skin type if we got a name or any greeting response
+            if any(word in message.lower() for word in ["hi", "hello", "name", "i'm", "i am", "call me"]) or len(message.strip()) > 0:
+                session.state = state_transitions[session.state]
+                
+        elif session.state == ConversationState.SKIN_TYPE:
+            # Move forward if we detected a skin type or got any reasonable response
+            if session.profile.skin_type or any(skin_type in message.lower() for skin_type in ["oily", "dry", "combination", "normal", "sensitive"]):
+                session.state = state_transitions[session.state]
+                
+        elif session.state == ConversationState.CONCERNS:
+            # Move forward if we got concerns or user indicates they're done
+            if session.profile.concerns or any(word in message.lower() for word in ["none", "nothing", "no concerns", "good", "fine"]):
+                session.state = state_transitions[session.state]
+                
+        elif session.state == ConversationState.AGE_RANGE:
+            # Move forward if we got age info or any number/age-related word
+            age_indicators = ["teen", "twenty", "thirty", "forty", "fifty", "under", "over", "old", "age"]
+            if session.profile.age_range or any(word in message.lower() for word in age_indicators) or any(char.isdigit() for char in message):
+                session.state = state_transitions[session.state]
+                
+        elif session.state in [ConversationState.ROUTINE, ConversationState.LIFESTYLE, ConversationState.BUDGET]:
+            # Move forward after any reasonable response
+            if len(message.strip()) > 2:  # Any meaningful response
+                session.state = state_transitions[session.state]
+                
+        elif session.state == ConversationState.ALLERGIES:
+            # Move to analysis after allergy info (or lack thereof)
+            if len(message.strip()) > 0:
+                session.state = state_transitions[session.state]
 
     def _is_profile_complete(self, profile: SkinProfile) -> bool:
         return bool(profile.skin_type and profile.concerns)
@@ -428,37 +448,107 @@ class SkincareChatbot:
         products: List[Dict] = []
 
         if session.state == ConversationState.GREETING:
+            # Handle various greeting patterns
+            greeting_patterns = [
+                r"(?:hi|hello|hey|good morning|good afternoon|good evening)",
+                r"(?:I'm|I am|my name is|call me)\s+(\w+)",
+                r"(?:help|advice|consultation|skincare)",
+            ]
+            
             name_match = re.search(r"(?:I'm|I am|my name is|call me)\s+(\w+)", message, re.I)
             if name_match:
                 session.context["name"] = name_match.group(1).capitalize()
                 response = (
-                    f"Nice to meet you, {session.context['name']}! "
-                    + current_flow["questions"][0].split("What's your name?")[0]
+                    f"Nice to meet you, {session.context['name']}! 😊 I'm your personal skincare consultant. "
+                    f"I'll help you build the perfect routine tailored just for you.\n\n"
+                    f"Let's start with the basics - how would you describe your skin type?"
+                )
+            elif any(re.search(pattern, message, re.I) for pattern in greeting_patterns):
+                response = (
+                    "Hello! 👋 Welcome to your personalized skincare consultation! "
+                    "I'm here to help you achieve your best skin ever.\n\n"
+                    "To get started, could you tell me your name? And then we'll dive into "
+                    "understanding your unique skin needs!"
                 )
             else:
-                response = current_flow["questions"][0]
-            suggestions = ["Oily", "Dry", "Combination", "Normal", "Sensitive"]
+                # Handle any other input as a general greeting
+                response = (
+                    "Hi there! I'm your AI skincare consultant. 🌟\n\n"
+                    "I'll help you:\n"
+                    "• Identify your skin type\n"
+                    "• Address your specific concerns\n" 
+                    "• Build a personalized routine\n"
+                    "• Recommend the best products\n\n"
+                    "What's your name so we can get started?"
+                )
+            suggestions = ["My name is...", "I need skincare help", "Oily skin", "Dry skin", "Sensitive skin"]
         elif session.state == ConversationState.SKIN_TYPE:
             if entities.get("skin_type"):
+                skin_type = session.profile.skin_type.capitalize()
+                skin_tips = {
+                    "Oily": "Oily skin produces excess sebum, which can lead to shine and breakouts. The good news? It tends to age slower! 🌟",
+                    "Dry": "Dry skin needs extra hydration and gentle care. It can feel tight but responds beautifully to the right moisture! 💧",
+                    "Combination": "Combination skin is like having two skin types - oily T-zone and dry cheeks. It needs a balanced approach! ⚖️",
+                    "Normal": "Lucky you! Normal skin is well-balanced, but still needs proper care to maintain its health! ✨",
+                    "Sensitive": "Sensitive skin requires extra gentle care and avoiding harsh ingredients. We'll find products that love your skin back! 💕"
+                }
                 response = (
-                    f"Got it! {session.profile.skin_type.capitalize()} skin needs special care. "
-                    + self.question_flow[ConversationState.CONCERNS]["questions"][0]
+                    f"Perfect! {skin_type} skin it is. {skin_tips.get(skin_type, '')}\n\n"
+                    f"Now, let's talk about your main skin concerns. What bothers you most about your skin? "
+                    f"You can mention multiple concerns - I'm here to address them all! 🎯"
                 )
-                suggestions = ["Acne", "Fine lines", "Dark spots", "Large pores", "Redness"]
+                suggestions = ["Acne & breakouts", "Fine lines", "Dark spots", "Large pores", "Redness", "Dullness"]
             else:
-                response = "Please select your skin type from the options above."
-                suggestions = ["Oily", "Dry", "Combination", "Normal", "Not sure"]
+                response = (
+                    "I'd love to help you identify your skin type! Here's a quick guide:\n\n"
+                    "🔸 **Oily**: Shiny, especially T-zone, prone to breakouts\n"
+                    "🔸 **Dry**: Feels tight, flaky, sometimes rough texture\n" 
+                    "🔸 **Combination**: Oily T-zone (forehead, nose, chin) + dry cheeks\n"
+                    "🔸 **Normal**: Balanced, not too oily or dry\n"
+                    "🔸 **Sensitive**: Easily irritated, reacts to products\n\n"
+                    "Which one sounds most like your skin?"
+                )
+                suggestions = ["Oily", "Dry", "Combination", "Normal", "Sensitive", "Not sure"]
         elif session.state == ConversationState.CONCERNS:
             if entities.get("concerns"):
-                concern_str = ", ".join(session.profile.concerns)
+                concerns = session.profile.concerns
+                concern_str = ", ".join(concerns)
+                
+                # Provide specific advice for concerns
+                concern_advice = {
+                    "acne": "Acne can be frustrating, but with the right ingredients like salicylic acid and niacinamide, we can get it under control! 💪",
+                    "aging": "Prevention is key for aging! We'll focus on antioxidants, retinoids, and SPF to keep your skin youthful. ⏰",
+                    "pigmentation": "Dark spots take patience, but ingredients like vitamin C, niacinamide, and gentle exfoliation work wonders! ✨",
+                    "pores": "While we can't shrink pores permanently, we can minimize their appearance with the right routine! 🎯",
+                    "redness": "Redness often indicates sensitivity or inflammation. We'll focus on gentle, soothing ingredients. 🌿",
+                    "dullness": "Dull skin just needs the right exfoliation and hydration to reveal your natural glow! 🌟"
+                }
+                
+                advice_parts = []
+                for concern in concerns:
+                    if concern.lower() in concern_advice:
+                        advice_parts.append(concern_advice[concern.lower()])
+                
                 response = (
-                    f"I understand you're dealing with {concern_str}. We'll address these! "
-                    + self.question_flow[ConversationState.AGE_RANGE]["questions"][0]
+                    f"Got it! You're dealing with {concern_str}. Here's the good news:\n\n"
+                    + "\n".join(f"• {advice}" for advice in advice_parts[:2]) + "\n\n"
+                    + "Now, to create the perfect routine for you, which age group do you belong to? "
+                    + "This helps me recommend age-appropriate products and ingredients. 🎂"
                 )
                 suggestions = ["Under 20", "20-30", "30-40", "40-50", "50+"]
             else:
-                response = "What skin concerns would you like to address?"
-                suggestions = ["Acne", "Wrinkles", "Dark spots", "Large pores", "None"]
+                response = (
+                    "What skin concerns would you like to address? Don't worry - everyone has them! "
+                    "The more specific you are, the better I can help you. You can mention multiple concerns:\n\n"
+                    "🔸 **Acne & breakouts** - pimples, blackheads, whiteheads\n"
+                    "🔸 **Aging signs** - fine lines, wrinkles, loss of firmness\n"
+                    "🔸 **Dark spots** - hyperpigmentation, sun spots, acne marks\n"
+                    "🔸 **Large pores** - visible or enlarged pores\n"
+                    "🔸 **Redness** - irritation, rosacea, sensitivity\n"
+                    "🔸 **Dullness** - lack of glow, uneven texture\n\n"
+                    "What's bothering you most about your skin?"
+                )
+                suggestions = ["Acne", "Fine lines", "Dark spots", "Large pores", "Redness", "Dullness", "Multiple concerns"]
         elif session.state == ConversationState.ANALYSIS:
             recommendations = self.generate_recommendations(session.profile)
             session.recommendations = recommendations
@@ -467,12 +557,156 @@ class SkincareChatbot:
             products = recommend_products(session.profile.concerns)[:5]
             suggestions = ["Show morning routine", "Show evening routine", "Explain ingredients", "Start over"]
         else:
-            if current_flow:
+            # Handle other states with more intelligence
+            if session.state == ConversationState.AGE_RANGE:
+                age_patterns = [
+                    (r"\b(\d{1,2})\s*years?\s*old\b", "specific_age"),
+                    (r"\bunder\s*(\d{2})\b", "under_age"),
+                    (r"\b(\d{2})-(\d{2})\b", "age_range"),
+                    (r"\b(\d{2})s\b", "decade"),
+                ]
+                
+                age_found = False
+                for pattern, _ in age_patterns:
+                    if re.search(pattern, message.lower()):
+                        age_found = True
+                        break
+                
+                if age_found or any(age in message.lower() for age in ["teen", "twenty", "thirty", "forty", "fifty"]):
+                    response = (
+                        "Perfect! Age is important for skincare because our skin's needs change over time. 📅\n\n"
+                        "Now, tell me about your current skincare routine. What products do you use daily? "
+                        "Even if it's just water and soap, I want to know! This helps me understand what's working "
+                        "and what we might need to change. 🧴"
+                    )
+                    suggestions = ["Just cleanser", "Cleanser + moisturizer", "Full routine", "Nothing really", "Minimal routine"]
+                else:
+                    response = (
+                        "I'd love to know your age range to give you the best recommendations! "
+                        "Different ages have different skincare priorities:\n\n"
+                        "🔸 **Under 20**: Focus on gentle cleansing and sun protection\n"
+                        "🔸 **20-30**: Prevention and addressing specific concerns\n"
+                        "🔸 **30-40**: Anti-aging prevention and maintenance\n"
+                        "🔸 **40-50**: Active anti-aging and skin barrier support\n"
+                        "🔸 **50+**: Intensive care and addressing mature skin needs\n\n"
+                        "Which range fits you best?"
+                    )
+                    suggestions = ["Under 20", "20-30", "30-40", "40-50", "50+"]
+                    
+            elif session.state in [ConversationState.ROUTINE, ConversationState.LIFESTYLE, ConversationState.BUDGET, ConversationState.ALLERGIES]:
+                # Handle these states with more engaging responses
+                state_responses = {
+                    ConversationState.ROUTINE: (
+                        "Great! Understanding your current routine helps me see what's working. 👍\n\n"
+                        "Now let's talk lifestyle - this affects your skin more than you might think! "
+                        "How many hours of sleep do you usually get? Do you wear makeup daily? "
+                        "How much water do you drink? Any outdoor activities? 🌞"
+                    ),
+                    ConversationState.LIFESTYLE: (
+                        "Lifestyle factors are so important for skin health! 🌟\n\n"
+                        "Let's talk budget - I want to make sure my recommendations fit your lifestyle. "
+                        "What's your monthly skincare budget? Don't worry, great skin doesn't have to be expensive! 💰"
+                    ),
+                    ConversationState.BUDGET: (
+                        "Perfect! I'll keep that budget in mind for all my recommendations. 💝\n\n"
+                        "Last question: Do you have any allergies or ingredients you want to avoid? "
+                        "This could be fragrances, essential oils, specific actives like retinol, or anything "
+                        "that has irritated your skin before. Better safe than sorry! 🛡️"
+                    ),
+                    ConversationState.ALLERGIES: (
+                        "Excellent! I have all the information I need to create your perfect routine. "
+                        "Let me analyze everything and create a personalized plan just for you! ✨"
+                    )
+                }
+                response = state_responses.get(session.state, "Let me process that information...")
+                suggestions = ["Continue", "Tell me more", "I'm ready for my routine"]
+                
+            elif current_flow:
                 response = current_flow["questions"][0]
             else:
                 response = "Let me analyze your profile and create your personalized routine..."
 
+        # Add intelligent fallback for unrecognized input
+        if not response or len(response) < 10:
+            response = self._handle_general_input(session, message)
+
         return response, suggestions, products
+
+    def _handle_general_input(self, session: ChatSession, message: str) -> str:
+        """Handle general input that doesn't fit current conversation state"""
+        message_lower = message.lower()
+        
+        # Handle common questions/requests
+        if any(word in message_lower for word in ["help", "what", "how", "why", "explain"]):
+            return (
+                "I'm here to help you build the perfect skincare routine! 🌟\n\n"
+                "I'll guide you through a few questions to understand:\n"
+                "• Your skin type and concerns\n"
+                "• Your age and lifestyle\n"
+                "• Your budget and preferences\n\n"
+                "Then I'll create a personalized routine just for you! Ready to continue?"
+            )
+        
+        elif any(word in message_lower for word in ["product", "recommend", "suggest", "buy"]):
+            if session.profile.skin_type and session.profile.concerns:
+                return (
+                    "I'd love to recommend products! Let me finish gathering your information "
+                    "so I can give you the most personalized recommendations. We're almost done! 🎯"
+                )
+            else:
+                return (
+                    "I'll recommend the perfect products for you once I understand your skin better! "
+                    "Let's continue with a few more questions first. 💫"
+                )
+        
+        elif any(word in message_lower for word in ["routine", "steps", "order"]):
+            return (
+                "I'll create a complete morning and evening routine for you! "
+                "Just let me gather a bit more information about your skin first. 📋"
+            )
+        
+        elif any(word in message_lower for word in ["ingredient", "chemical", "acid", "retinol", "vitamin"]):
+            return (
+                "Great question about ingredients! I'll explain everything when I create your routine. "
+                "Different ingredients work better for different skin types and concerns. Let's continue! 🧪"
+            )
+        
+        elif any(word in message_lower for word in ["skip", "next", "continue", "done"]):
+            return (
+                "Sure! Let's move forward. I want to make sure I have enough information "
+                "to give you the best recommendations possible. 🚀"
+            )
+        
+        elif any(word in message_lower for word in ["start over", "restart", "reset", "begin again"]):
+            # Reset session
+            session.state = ConversationState.GREETING
+            session.profile = SkinProfile()
+            session.context = {}
+            return (
+                "No problem! Let's start fresh. 🌟\n\n"
+                "Hi! I'm your personal skincare consultant. What's your name?"
+            )
+        
+        else:
+            # Generic encouraging response
+            current_state_help = {
+                ConversationState.GREETING: "Let's start with your name so I can personalize our conversation!",
+                ConversationState.SKIN_TYPE: "Tell me about your skin type - is it oily, dry, combination, normal, or sensitive?",
+                ConversationState.CONCERNS: "What skin concerns would you like to address?",
+                ConversationState.AGE_RANGE: "Which age group do you belong to?",
+                ConversationState.ROUTINE: "What's your current skincare routine like?",
+                ConversationState.LIFESTYLE: "Tell me about your lifestyle and daily habits!",
+                ConversationState.BUDGET: "What's your monthly skincare budget?",
+                ConversationState.ALLERGIES: "Do you have any allergies or ingredients to avoid?"
+            }
+            
+            help_text = current_state_help.get(session.state, "Let's continue building your profile!")
+            
+            return (
+                f"I understand! Let me help guide you. 😊\n\n"
+                f"{help_text}\n\n"
+                f"Feel free to ask me anything or just answer the question above!"
+            )
 
     def process_message(self, message: str, session_id: Optional[str] = None) -> ChatResponse:
         session = self.get_or_create_session(session_id)
@@ -482,7 +716,7 @@ class SkincareChatbot:
         response_text, suggestions, products = self._generate_response(session, message, entities)
         session.messages.append(ChatMessage(role="assistant", content=response_text))
         profile_complete = self._is_profile_complete(session.profile)
-        self._update_state(session)
+        self._update_state(session, message)
         self.sessions[session.session_id] = session
         return ChatResponse(
             response=response_text,
@@ -537,8 +771,8 @@ async def reset_session(session_id: str):
 async def analyze_with_image(session_id: str, file: UploadFile = File(...)):
     if session_id not in chatbot.sessions:
         raise HTTPException(status_code=404, detail="Session not found")
-    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
-    from backend.services import image_service
+    from ml_models.optimized_analyzer import get_optimized_analyzer
+    from services import image_service
     image_path = await image_service.save_upload_file(file)
     analyzer = get_optimized_analyzer()
     results = analyzer.analyze(image_path)

@@ -54,6 +54,14 @@ pip install --upgrade pip
 pip install -r requirements.txt
 [ ! -f .env ] && cp ../.env.example .env
 
+# Set PYTHONPATH to include backend directory
+export PYTHONPATH="${PWD}"
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    echo "set PYTHONPATH=%PYTHONPATH%;%CD%" >> venv\Scripts\activate.bat
+else
+    echo "export PYTHONPATH=\${PYTHONPATH}:${PWD}" >> venv/bin/activate
+fi
+
 # Database setup
 echo "🗄️ Setting up database..."
 if command -v psql &> /dev/null; then
