@@ -9,6 +9,11 @@ try:
 except:
     pass
 
+# Add current directory to Python path for imports
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from api import skin_analysis_unified, chatbot
 from database.connection import init_db
 
