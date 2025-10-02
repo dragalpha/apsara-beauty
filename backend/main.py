@@ -2,11 +2,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
-from dotenv import load_dotenv
-from api import skin_analysis, skin_analysis_v2
-from database.connection import init_db
+# Try to load .env file if it exists, but don't fail if it doesn't
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except:
+    pass
 
-load_dotenv()
+from api import skin_analysis_unified, chatbot
+from database.connection import init_db
 
 app = FastAPI(title="Apsara Beauty API")
 
@@ -30,8 +34,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include routers
-app.include_router(skin_analysis.router, prefix="/api/analysis", tags=["analysis"])
-app.include_router(skin_analysis_v2.router, prefix="/api/v2/analysis", tags=["analysis"])
+app.include_router(skin_analysis_unified.router, prefix="/api/analysis", tags=["analysis"])
+app.include_router(chatbot.router, prefix="/api/chat", tags=["chat"])
 
 
 @app.get("/health")
