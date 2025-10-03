@@ -9,13 +9,13 @@ try:
 except:
     pass
 
-# Add current directory to Python path for imports
+# Add parent directory to Python path for imports
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from api import skin_analysis_unified, chatbot
-from database.connection import init_db
+from backend.api import skin_analysis_unified
+from backend.database.connection import init_db
 
 app = FastAPI(title="Apsara Beauty API")
 
@@ -40,7 +40,6 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include routers
 app.include_router(skin_analysis_unified.router, prefix="/api/analysis", tags=["analysis"])
-app.include_router(chatbot.router, prefix="/api/chat", tags=["chat"])
 
 
 @app.get("/health")

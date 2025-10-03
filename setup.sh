@@ -54,12 +54,15 @@ pip install --upgrade pip
 pip install -r requirements.txt
 [ ! -f .env ] && cp ../.env.example .env
 
-# Set PYTHONPATH to include backend directory
-export PYTHONPATH="${PWD}"
+# Set PYTHONPATH to include the project root (Apsara directory)
+# This allows imports like 'from backend.api import ...' to work correctly
+PROJECT_ROOT=$(dirname "$(pwd)") # Get parent directory of 'backend'
+export PYTHONPATH="${PYTHONPATH}:${PROJECT_ROOT}"
+
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    echo "set PYTHONPATH=%PYTHONPATH%;%CD%" >> venv\Scripts\activate.bat
+    echo "set PYTHONPATH=%PYTHONPATH%;%PROJECT_ROOT%" >> venv\Scripts\activate.bat
 else
-    echo "export PYTHONPATH=\${PYTHONPATH}:${PWD}" >> venv/bin/activate
+    echo "export PYTHONPATH=\${PYTHONPATH}:${PROJECT_ROOT}" >> venv/bin/activate
 fi
 
 # Database setup

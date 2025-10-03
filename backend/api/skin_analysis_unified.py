@@ -16,19 +16,19 @@ from PIL import Image
 import logging
 import os
 
-from services import image_service
-from services.product_service import recommend_products
+from backend.services import image_service
+from backend.services.product_service import recommend_products
 
 # Import both analyzers with fallback logic
 try:
-    from ml_models.optimized_analyzer import get_optimized_analyzer
+    from backend.ml_models.optimized_analyzer import get_optimized_analyzer
     _has_optimized = True
     logging.info("Optimized TorchScript analyzer available")
 except ImportError:
     _has_optimized = False
     logging.warning("Optimized analyzer not available, using heuristic analyzer only")
 
-from ml_models import analyze_image as heuristic_analyze
+from backend.ml_models import analyze_image as heuristic_analyze
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
